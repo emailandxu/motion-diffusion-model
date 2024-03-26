@@ -51,6 +51,11 @@ def collate(batch):
     if 'action_text' in notnone_batches[0]:
         action_text = [b['action_text']for b in notnone_batches]
         cond['y'].update({'action_text': action_text})
+    
+    if "inp" in notnone_batches[0]:
+        noise_blend_factor = torch.rand(1).to(motion) * 0.3
+        noise_motion = ( 1-noise_blend_factor ) * motion + noise_blend_factor * torch.randn_like(motion)
+        cond['y'].update({"noise_motion": noise_motion})
 
     return motion, cond
 

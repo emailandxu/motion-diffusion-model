@@ -166,6 +166,8 @@ class TrainLoop:
     def evaluate(self):
         if not self.args.eval_during_training:
             return
+        else:
+            print("evaluating!", "!"*30)
         start_eval = time.time()
         if self.eval_wrapper is not None:
             print('Running evaluation loop: [Should take about 90 min]')

@@ -93,6 +93,8 @@ def add_model_options(parser):
     group.add_argument("--unconstrained", action='store_true',
                        help="Model is trained unconditionally. That is, it is constrained by neither text nor action. "
                             "Currently tested on HumanAct12 only.")
+    group.add_argument("--cond_noise_motion", action='store_true',
+                       help="Model is trained for denoise reconstruction motion. That means the condtion will be noised motion (input added noise).")
 
 
 
@@ -204,10 +206,13 @@ def add_evaluation_options(parser):
 def get_cond_mode(args):
     if args.unconstrained:
         cond_mode = 'no_cond'
+    if args.cond_noise_motion:
+        cond_mode = "noise_motion"
     elif args.dataset in ['kit', 'humanml']:
         cond_mode = 'text'
     else:
         cond_mode = 'action'
+    print("cond_mode:", cond_mode, "!"*5)
     return cond_mode
 
 

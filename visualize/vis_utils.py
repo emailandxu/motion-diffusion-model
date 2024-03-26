@@ -4,15 +4,26 @@ from trimesh import Trimesh
 import os
 import torch
 from visualize.simplify_loc2rot import joints2smpl
+from pathlib import Path
+
+def rotate_x(a, device="cuda"):
+    s, c = np.sin(a), np.cos(a)
+    return torch.tensor([[1,  0, 0, 0], 
+                     [0,  c, s, 0], 
+                     [0, -s, c, 0], 
+                     [0,  0, 0, 1]]).to(torch.float32).to(device)
 
 class npy2obj:
     def __init__(self, npy_path, sample_idx, rep_idx, device=0, cuda=True):
+
         self.npy_path = npy_path
         self.motions = np.load(self.npy_path, allow_pickle=True)
         if self.npy_path.endswith('.npz'):
             self.motions = self.motions['arr_0']
         self.motions = self.motions[None][0]
+
         self.rot2xyz = Rotation2xyz(device='cpu')
+
         self.faces = self.rot2xyz.smpl_model.faces
         self.bs, self.njoints, self.nfeats, self.nframes = self.motions['motion'].shape
         self.opt_cache = {}
@@ -31,6 +42,9 @@ class npy2obj:
             self.motions['motion'] = self.motions['motion'][[self.absl_idx]]
         self.bs, self.njoints, self.nfeats, self.nframes = self.motions['motion'].shape
         self.real_num_frames = self.motions['lengths'][self.absl_idx]
+        
+        # smpl_paramters = self.output2smplparam(self.motions['motion'])
+        # np.savez(Path(self.npy_path).with_name(Path(self.npy_path).stem+"_view.npz").as_posix(), **smpl_paramters)
 
         self.vertices = self.rot2xyz(torch.tensor(self.motions['motion']), mask=None,
                                      pose_rep='rot6d', translation=True, glob=True,
@@ -41,7 +55,9 @@ class npy2obj:
         # self.vertices += self.root_loc
 
     def get_vertices(self, sample_i, frame_i):
-        return self.vertices[sample_i, :, :, frame_i].squeeze().tolist()
+        verts = self.vertices[sample_i, :, :, frame_i].squeeze()
+        # breakpoint()
+        return (rotate_x(np.pi, "cpu")[:3, :3] @ verts.T).T.tolist()
 
     def get_trimesh(self, sample_i, frame_i):
         return Trimesh(vertices=self.get_vertices(sample_i, frame_i),

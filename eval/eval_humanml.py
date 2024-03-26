@@ -87,8 +87,12 @@ def evaluate_fid(eval_wrapper, groundtruth_loader, activation_dict, file):
     # print(gt_mu)
     for model_name, motion_embeddings in activation_dict.items():
         mu, cov = calculate_activation_statistics(motion_embeddings)
-        # print(mu)
-        fid = calculate_frechet_distance(gt_mu, gt_cov, mu, cov)
+        
+        if not (np.isnan(motion_embeddings).any() or np.isnan(gt_motion_embeddings).any()):
+            fid = calculate_frechet_distance(gt_mu, gt_cov, mu, cov)
+        else:
+            fid = 0.
+
         print(f'---> [{model_name}] FID: {fid:.4f}')
         print(f'---> [{model_name}] FID: {fid:.4f}', file=file, flush=True)
         eval_dict[model_name] = fid
@@ -99,7 +103,10 @@ def evaluate_diversity(activation_dict, file, diversity_times):
     eval_dict = OrderedDict({})
     print('========== Evaluating Diversity ==========')
     for model_name, motion_embeddings in activation_dict.items():
-        diversity = calculate_diversity(motion_embeddings, diversity_times)
+        if not np.isnan(motion_embeddings).any():
+            diversity = calculate_diversity(motion_embeddings, diversity_times)
+        else:
+            diversity = 0.
         eval_dict[model_name] = diversity
         print(f'---> [{model_name}] Diversity: {diversity:.4f}')
         print(f'---> [{model_name}] Diversity: {diversity:.4f}', file=file, flush=True)

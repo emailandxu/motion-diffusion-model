@@ -48,6 +48,7 @@ class MDM(nn.Module):
         self.arch = arch
         self.gru_emb_dim = self.latent_dim if self.arch == 'gru' else 0
         self.input_process = InputProcess(self.data_rep, self.input_feats+self.gru_emb_dim, self.latent_dim)
+        self.noise_motion_input_process = InputProcess(self.data_rep, self.input_feats+self.gru_emb_dim, self.latent_dim)
 
         self.sequence_pos_encoder = PositionalEncoding(self.latent_dim, self.dropout)
         self.emb_trans_dec = emb_trans_dec
@@ -153,6 +154,11 @@ class MDM(nn.Module):
         if 'action' in self.cond_mode:
             action_emb = self.embed_action(y['action'])
             emb += self.mask_cond(action_emb, force_mask=force_mask)
+        if 'noise_motion' in self.cond_mode:
+            noise_motion = y['noise_motion']
+            noise_motion_emb = self.noise_motion_input_process(noise_motion)
+            noise_motion_emb = torch.sum(noise_motion_emb, dim=0 )
+            emb += self.mask_cond(noise_motion_emb, force_mask=force_mask)
 
         if self.arch == 'gru':
             x_reshaped = x.reshape(bs, njoints*nfeats, 1, nframes)

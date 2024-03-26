@@ -720,6 +720,9 @@ class TextOnlyDataset(data.Dataset):
 # A wrapper class for t2m original dataset for MDM purposes
 class HumanML3D(data.Dataset):
     def __init__(self, mode, datapath='./dataset/humanml_opt.txt', split="train", **kwargs):
+        """
+        the wrapper of Text2MotionDatasetV2
+        """
         self.mode = mode
         
         self.dataset_name = 't2m'
