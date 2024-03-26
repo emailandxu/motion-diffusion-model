@@ -18,6 +18,8 @@ almost_mask = --prefix_end 0.05 --suffix_start 0.95
 # super slow
 eval_during_training = --eval_during_training 
 
+videopath ?= default
+
 fit:
     # https://github.com/GuyTevet/motion-diffusion-model?tab=readme-ov-file#train-your-own-mdm
 	$(run) \
@@ -42,10 +44,10 @@ cond_noise_motion:
 	--edit_mode in_between \
 	$(full_mask)
 
-convert_to_mesh:
+to_mesh:
 	$(run) \
 	-m visualize.render_mesh \
-	--input_path $(save_dir)/edit_denoise_fix_embeding_overwirte_000195000_in_between_seed10/sample00_rep00.mp4
+	--input_path $(videopath)
 
 tensorboard:
 	tensorboard --logdir save/tensorboard --port 7777
