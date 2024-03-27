@@ -122,6 +122,17 @@ class MDM(nn.Module):
         else:
             return cond
 
+    def mask_cond_with_t(self, cond, force_mask=False):
+        """for cond that has time dimension"""
+        t, bs, d = cond.shape
+        if force_mask:
+            return torch.zeros_like(cond)
+        elif self.training and self.cond_mask_prob > 0.:
+            mask = torch.bernoulli(torch.ones(bs, device=cond.device) * self.cond_mask_prob).view(bs, 1)  # 1-> use null_cond, 0-> use real cond
+            return cond * (1. - mask)
+        else:
+            return cond
+    
     def encode_text(self, raw_text):
         # raw_text - list (batch_size length) of strings with input text prompts
         device = next(self.parameters()).device
@@ -139,6 +150,16 @@ class MDM(nn.Module):
             texts = clip.tokenize(raw_text, truncate=True).to(device) # [bs, context_length] # if n_tokens > 77 -> will truncate
         return self.clip_model.encode_text(texts).float()
 
+    def encode_noise_motion(self, noise_motion):
+        return self.noise_motion_input_process(noise_motion)
+    
+    def reduce_noise_motion_emb(self, noise_motion_emb):
+        """reduce but will keep time dimension"""
+        # reduce emb into 1 element sequence
+        # print(noise_motion_emb.shape)
+        # noise_motion_emb = torch.sum(noise_motion_emb, dim=0, keepdim=True)
+        return noise_motion_emb
+    
     def forward(self, x, timesteps, y=None):
         """
         x: [batch_size, njoints, nfeats, max_frames], denoted x_t in the paper
@@ -156,9 +177,12 @@ class MDM(nn.Module):
             emb += self.mask_cond(action_emb, force_mask=force_mask)
         if 'noise_motion' in self.cond_mode:
             noise_motion = y['noise_motion']
-            noise_motion_emb = self.noise_motion_input_process(noise_motion)
-            noise_motion_emb = torch.sum(noise_motion_emb, dim=0 )
-            emb += self.mask_cond(noise_motion_emb, force_mask=force_mask)
+            noise_motion_emb = self.encode_noise_motion(noise_motion)
+            # this reducation will keep time dimension in the first channel
+            noise_motion_emb = self.reduce_noise_motion_emb(noise_motion_emb)
+            noise_motion_emb = self.mask_cond_with_t(noise_motion_emb, force_mask=force_mask)
+            # will make the condtion token greater than one
+            emb = torch.cat([emb, noise_motion_emb], dim=0) 
 
         if self.arch == 'gru':
             x_reshaped = x.reshape(bs, njoints*nfeats, 1, nframes)
@@ -170,10 +194,12 @@ class MDM(nn.Module):
         x = self.input_process(x)
 
         if self.arch == 'trans_enc':
+            dropping_tokens = condition_tokens = emb.shape[0] # dropping the condition tokens from output
             # adding the timestep embed
-            xseq = torch.cat((emb, x), axis=0)  # [seqlen+1, bs, d]
-            xseq = self.sequence_pos_encoder(xseq)  # [seqlen+1, bs, d]
-            output = self.seqTransEncoder(xseq)[1:]  # , src_key_padding_mask=~maskseq)  # [seqlen, bs, d]
+            xseq = torch.cat((emb, x), axis=0)  # [seqlen+dropping_tokens, bs, d]
+            xseq = self.sequence_pos_encoder(xseq)  # [seqlen+dropping_tokens, bs, d]
+            output = self.seqTransEncoder(xseq)[dropping_tokens:]  # , src_key_padding_mask=~maskseq)  # [seqlen, bs, d]
+
 
         elif self.arch == 'trans_dec':
             if self.emb_trans_dec:

@@ -1,4 +1,4 @@
-name ?= denoise_fix_embeding_overwirte
+name ?= denoise_more_condition_token
 devices ?= 0
 debug ?= 0
 
@@ -18,6 +18,7 @@ almost_mask = --prefix_end 0.05 --suffix_start 0.95
 # super slow
 eval_during_training = --eval_during_training 
 
+ckptpath ?= default
 videopath ?= default
 
 fit:
@@ -33,14 +34,14 @@ fit:
 generate:
 	$(run) \
 	-m sample.generate \
-	--model_path $(save_dir)/model000005000.pt  \
+	--model_path $(ckptpath)  \
 	--num_samples 10 \
 	--num_repetitions 3
 
 cond_noise_motion:
 	$(run) \
 	-m sample.cond_noise_motion \
-	--model_path $(save_dir)/model000195000.pt \
+	--model_path $(ckptpath) \
 	--edit_mode in_between \
 	$(full_mask)
 

@@ -8,6 +8,10 @@ bl_info = {
 import bpy
 import os
 
+
+THE_COLLECTION_NAME = "FRAMES"
+
+
 def delete_objects_in_collection(collection_name):
     collection = bpy.data.collections.get(collection_name)
     if collection:
@@ -42,10 +46,7 @@ def load_objs_into_collection(path, collection_name):
                 print("Loaded:", filename)
 
 
-def turn_visibility_in_order():
-    # Set the name of the collection containing the meshes
-    collection_name = "Frames"
-
+def turn_visibility_in_order(collection_name):
     # Get the collection by name
     collection = bpy.data.collections.get(collection_name)
 
@@ -91,7 +92,7 @@ class TurnVisibilityInOrderOperator(bpy.types.Operator):
     bl_label = "Turn Visibility In Order"
 
     def execute(self, context):
-        turn_visibility_in_order()
+        turn_visibility_in_order(THE_COLLECTION_NAME)
         return {'FINISHED'}
 
 class CollectionManagementPanel(bpy.types.Panel):
@@ -113,7 +114,7 @@ class LoadObjsOperator(bpy.types.Operator):
     bl_label = "Load OBJs Operator"
 
     def execute(self, context):
-        load_objs_into_collection(context.scene.obj_path, "Frames")
+        load_objs_into_collection(context.scene.obj_path, THE_COLLECTION_NAME)
         return {'FINISHED'}
 
 class DeleteObjectsOperator(bpy.types.Operator):
@@ -121,7 +122,7 @@ class DeleteObjectsOperator(bpy.types.Operator):
     bl_label = "Delete Objects Operator"
 
     def execute(self, context):
-        delete_objects_in_collection("Frames")
+        delete_objects_in_collection(THE_COLLECTION_NAME)
         return {'FINISHED'}
 
 def register():
