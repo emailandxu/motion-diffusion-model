@@ -37,6 +37,8 @@ clean:
 # ----------------------------EVALUATE-----------------------------------
 
 ckptpath ?= default
+input_motion ?= ""
+
 full_mask= --prefix_end 0.0 --suffix_start 1.0
 almost_mask = --prefix_end 0.05 --suffix_start 0.95
 # assign ckptpath
@@ -45,10 +47,10 @@ evaluate:
 	-m sample.cond_noise_motion \
 	--model_path $(ckptpath) \
 	--edit_mode in_between \
-	--num_samples 10 \
-	--num_repetitions 3 \
+	--num_samples 1 \
+	--num_repetitions 2 \
+	--input_motion $(input_motion) \
 	$(full_mask)
-
 
 # ----------------------------VISUALIZE---------------------------------
 videopath ?= default

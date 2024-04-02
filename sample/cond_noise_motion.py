@@ -17,6 +17,8 @@ from data_loaders import humanml_utils
 import data_loaders.humanml.utils.paramUtil as paramUtil
 from data_loaders.humanml.utils.plot_script import plot_3d_motion
 import shutil
+from data_loaders.tensors import collate
+from pathlib import Path
 
 
 def main():
@@ -30,7 +32,7 @@ def main():
     dist_util.setup_dist(args.device)
     if out_path == '':
         out_path = os.path.join(os.path.dirname(args.model_path),
-                                'denoise_{}_{}_seed{}'.format(niter, args.edit_mode, args.seed))
+                                'denoise_{}_{}'.format(niter, Path(args.input_motion).stem))
         if args.text_condition != '':
             out_path += '_' + args.text_condition.replace(' ', '_').replace('.', '')
 
@@ -45,7 +47,7 @@ def main():
     data = get_dataset_loader(name=args.dataset,
                               batch_size=args.batch_size,
                               num_frames=max_frames,
-                              split='test',
+                              split='quick',
                               hml_mode='train')  # in train mode, you get both text and motion.
     # data.fixed_length = n_frames
     total_num_samples = args.num_samples * args.num_repetitions
@@ -61,11 +63,29 @@ def main():
     model.to(dist_util.dev())
     model.eval()  # disable random masking
 
-    iterator = iter(data)
-    input_motions, model_kwargs = next(iterator)
-    input_motions = input_motions.to(dist_util.dev())
+    if not args.input_motion:
+        iterator = iter(data)
+        input_motions, model_kwargs = next(iterator)
+    else:
+        motion = np.load(args.input_motion) # time, channel=253
+        start_frame = 190
+        motion = motion[start_frame : start_frame + max_frames]
+        m_length = len(motion)
 
-    model_kwargs['y']['noise_motion'] = model_kwargs['y']['noise_motion'].to(dist_util.dev())
+        #normalization
+        motion = (motion - data.dataset.mean) / data.dataset.std
+        #padding
+        motion = np.concatenate([motion,np.zeros((max_frames- m_length, motion.shape[1]))], axis=0)
+        motion = motion.transpose()[:, np.newaxis] # channel, 1, time
+        motion = torch.from_numpy(motion).float()
+
+        collate_args = [{'inp': motion, 'tokens': None, 'lengths': m_length}] * args.num_samples
+        input_motions, model_kwargs = collate(collate_args)
+        model_kwargs['y']['noise_motion'] = input_motions
+        print(input_motions.shape)
+   
+    input_motions = input_motions.to(dist_util.dev())
+    model_kwargs['y']['noise_motion'] = model_kwargs['y']['noise_motion'].to(dist_util.dev())               
     noise_motion = model_kwargs['y']['noise_motion']
 
     texts = [args.text_condition] * args.num_samples

@@ -188,7 +188,8 @@ def add_edit_options(parser):
                        help="For in_between editing - Defines the end of input prefix (ratio from all frames).")
     group.add_argument("--suffix_start", default=0.75, type=float,
                        help="For in_between editing - Defines the start of input suffix (ratio from all frames).")
-
+    group.add_argument("--input_motion", default='', type=str,
+                       help="the motion is a pkl")
 
 def add_evaluation_options(parser):
     group = parser.add_argument_group('eval')
