@@ -28,7 +28,8 @@ def main():
     max_frames = 196 if args.dataset in ['kit', 'humanml'] else 60
 
     if args.input_motion:
-        full_motion = np.load(args.input_motion) # time, channel=253
+        from data_loaders.propose.propose_dataset import ProposeDataset
+        full_motion = ProposeDataset([args.input_motion])[0] # time, channel=253
         print(full_motion.shape)
         chunks = (len(full_motion) // max_frames) + 1
         args.num_samples = chunks
@@ -42,7 +43,7 @@ def main():
     if out_path == '':
         if args.input_motion:
             out_path = os.path.join(os.path.dirname(args.model_path),
-                                    'denoise_{}_{}'.format(niter, Path(args.input_motion).stem))
+                                    'denoise_{}_{}'.format(niter, Path(args.input_motion).parent.stem))
         else:
             out_path = os.path.join(os.path.dirname(args.model_path),
                                     'denoise_{}_{}_seed{}'.format(niter, args.edit_mode, args.seed))
@@ -81,16 +82,19 @@ def main():
         iterator = iter(data)
         input_motions, model_kwargs = next(iterator)
     else:
-        m_length = max_frames
+        m_length = max_frames if len(full_motion) > max_frames else len(full_motion)
         assert chunks == args.num_samples, f"{chunks} must equal args.num_samples"
 
         collate_args = []
         for i in range(chunks):
-            motion = full_motion[max_frames*i:max_frames*(i+1)]
+            motion = full_motion[m_length*i:m_length*(i+1)]
             #normalization
             motion = (motion - data.dataset.mean) / data.dataset.std
+
             #padding
-            motion = np.concatenate([motion,np.zeros((max_frames-m_length, motion.shape[1]))], axis=0)
+            if m_length < max_frames:
+                motion = np.concatenate([motion,np.zeros((max_frames-m_length, motion.shape[1]))], axis=0)
+
             motion = motion.transpose()[:, np.newaxis] # channel, 1, time
             motion = torch.from_numpy(motion).float()
             collate_args.append({'inp': motion, 'tokens': None, 'lengths': max_frames})
