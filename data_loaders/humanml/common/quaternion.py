@@ -7,6 +7,7 @@
 
 import torch
 import numpy as np
+np.float = float # for numpy compatible
 
 _EPS4 = np.finfo(float).eps * 4.0
 

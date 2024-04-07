@@ -24,15 +24,29 @@ from pathlib import Path
 def main():
     args = edit_args()
     fixseed(args.seed)
+
+    max_frames = 196 if args.dataset in ['kit', 'humanml'] else 60
+
+    if args.input_motion:
+        full_motion = np.load(args.input_motion) # time, channel=253
+        print(full_motion.shape)
+        chunks = (len(full_motion) // max_frames) + 1
+        args.num_samples = chunks
+
+
     out_path = args.output_dir
     name = os.path.basename(os.path.dirname(args.model_path))
     niter = os.path.basename(args.model_path).replace('model', '').replace('.pt', '')
-    max_frames = 196 if args.dataset in ['kit', 'humanml'] else 60
     fps = 12.5 if args.dataset == 'kit' else 20
     dist_util.setup_dist(args.device)
     if out_path == '':
-        out_path = os.path.join(os.path.dirname(args.model_path),
-                                'denoise_{}_{}'.format(niter, Path(args.input_motion).stem))
+        if args.input_motion:
+            out_path = os.path.join(os.path.dirname(args.model_path),
+                                    'denoise_{}_{}'.format(niter, Path(args.input_motion).stem))
+        else:
+            out_path = os.path.join(os.path.dirname(args.model_path),
+                                    'denoise_{}_{}_seed{}'.format(niter, args.edit_mode, args.seed))
+
         if args.text_condition != '':
             out_path += '_' + args.text_condition.replace(' ', '_').replace('.', '')
 
@@ -67,19 +81,20 @@ def main():
         iterator = iter(data)
         input_motions, model_kwargs = next(iterator)
     else:
-        motion = np.load(args.input_motion) # time, channel=253
-        start_frame = 190
-        motion = motion[start_frame : start_frame + max_frames]
-        m_length = len(motion)
+        m_length = max_frames
+        assert chunks == args.num_samples, f"{chunks} must equal args.num_samples"
 
-        #normalization
-        motion = (motion - data.dataset.mean) / data.dataset.std
-        #padding
-        motion = np.concatenate([motion,np.zeros((max_frames- m_length, motion.shape[1]))], axis=0)
-        motion = motion.transpose()[:, np.newaxis] # channel, 1, time
-        motion = torch.from_numpy(motion).float()
+        collate_args = []
+        for i in range(chunks):
+            motion = full_motion[max_frames*i:max_frames*(i+1)]
+            #normalization
+            motion = (motion - data.dataset.mean) / data.dataset.std
+            #padding
+            motion = np.concatenate([motion,np.zeros((max_frames-m_length, motion.shape[1]))], axis=0)
+            motion = motion.transpose()[:, np.newaxis] # channel, 1, time
+            motion = torch.from_numpy(motion).float()
+            collate_args.append({'inp': motion, 'tokens': None, 'lengths': max_frames})
 
-        collate_args = [{'inp': motion, 'tokens': None, 'lengths': m_length}] * args.num_samples
         input_motions, model_kwargs = collate(collate_args)
         model_kwargs['y']['noise_motion'] = input_motions
         print(input_motions.shape)
