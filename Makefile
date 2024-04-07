@@ -1,5 +1,5 @@
 # -----------------------------GLOBAL-----------------------------------
-name ?= denoise_variance_noise_condition
+name ?= emd_noise_level
 devices ?= 0
 debug ?= 0
 

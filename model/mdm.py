@@ -48,7 +48,10 @@ class MDM(nn.Module):
         self.arch = arch
         self.gru_emb_dim = self.latent_dim if self.arch == 'gru' else 0
         self.input_process = InputProcess(self.data_rep, self.input_feats+self.gru_emb_dim, self.latent_dim)
+        
         self.noise_motion_input_process = InputProcess(self.data_rep, self.input_feats+self.gru_emb_dim, self.latent_dim)
+        
+        self.noise_level_input_process = InputProcess(self.data_rep, self.input_feats+self.gru_emb_dim, self.latent_dim)
 
         self.sequence_pos_encoder = PositionalEncoding(self.latent_dim, self.dropout)
         self.emb_trans_dec = emb_trans_dec
@@ -160,6 +163,14 @@ class MDM(nn.Module):
         # noise_motion_emb = torch.sum(noise_motion_emb, dim=0, keepdim=True)
         return noise_motion_emb
     
+    def encode_noise_level(self, noise_level):
+        return self.noise_level_input_process(noise_level)
+    
+    def reduce_noise_level_emb(self, noise_level_emb):
+        """reduce but will keep time dimension"""
+        # reduce emb into 1 element sequence
+        return noise_level_emb
+    
     def forward(self, x, timesteps, y=None):
         """
         x: [batch_size, njoints, nfeats, max_frames], denoted x_t in the paper
@@ -181,8 +192,15 @@ class MDM(nn.Module):
             # this reducation will keep time dimension in the first channel
             noise_motion_emb = self.reduce_noise_motion_emb(noise_motion_emb)
             noise_motion_emb = self.mask_cond_with_t(noise_motion_emb, force_mask=force_mask)
+
+            noise_level = y['noise_level']
+            noise_level_emb = self.encode_noise_level(noise_level)
+            # this reducation will keep time dimension in the first channel
+            noise_level_emb = self.reduce_noise_level_emb(noise_level_emb)
+            noise_level_emb = self.mask_cond_with_t(noise_level_emb, force_mask=force_mask)
+
             # will make the condtion token greater than one
-            emb = torch.cat([emb, noise_motion_emb], dim=0) 
+            emb = torch.cat([emb, noise_motion_emb + noise_level_emb], dim=0) 
 
         if self.arch == 'gru':
             x_reshaped = x.reshape(bs, njoints*nfeats, 1, nframes)

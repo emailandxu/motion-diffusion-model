@@ -54,10 +54,11 @@ def collate(batch):
     
     if "inp" in notnone_batches[0]:
         # range from (0, noise_strength)
-        noise_strength = 1.0
-        noise_blend_factor = torch.rand_like(motion) * noise_strength 
-        noise_motion = ( 1-noise_blend_factor ) * motion + noise_blend_factor * torch.randn_like(motion)
+        noise_max_strength = 1.0
+        noise_level = torch.rand_like(motion) * noise_max_strength 
+        noise_motion = ( 1 - noise_level ) * motion + noise_level * torch.randn_like(motion)
         cond['y'].update({"noise_motion": noise_motion})
+        cond['y'].update({"noise_level": noise_level})
 
     return motion, cond
 

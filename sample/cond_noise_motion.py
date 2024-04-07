@@ -97,12 +97,13 @@ def main():
 
         input_motions, model_kwargs = collate(collate_args)
         model_kwargs['y']['noise_motion'] = input_motions
+        model_kwargs['y']['noise_level'] = torch.ones_like(input_motions)
         print(input_motions.shape)
    
     input_motions = input_motions.to(dist_util.dev())
-    model_kwargs['y']['noise_motion'] = model_kwargs['y']['noise_motion'].to(dist_util.dev())               
-    noise_motion = model_kwargs['y']['noise_motion']
-
+    model_kwargs['y']['noise_motion'] = model_kwargs['y']['noise_motion'].to(dist_util.dev())  
+    model_kwargs['y']['noise_level'] = model_kwargs['y']['noise_level'].to(dist_util.dev())               
+             
     texts = [args.text_condition] * args.num_samples
     model_kwargs['y']['text'] = texts
     # if args.text_condition == '':
@@ -198,7 +199,7 @@ def main():
             return input_motions
         
         input_motions = recover_from_humanml3d(input_motions)
-        noise_motion =  recover_from_humanml3d(noise_motion)
+        noise_motion =  recover_from_humanml3d(model_kwargs['y']['noise_motion'])
 
     for sample_i in range(args.num_samples):
         caption = 'Input Motion'
