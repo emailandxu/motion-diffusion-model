@@ -101,7 +101,7 @@ def main():
 
         input_motions, model_kwargs = collate(collate_args)
         model_kwargs['y']['noise_motion'] = input_motions
-        model_kwargs['y']['noise_level'] = torch.ones_like(input_motions)
+        model_kwargs['y']['noise_level'] = torch.ones_like(input_motions) * 0.1
         print(input_motions.shape)
    
     input_motions = input_motions.to(dist_util.dev())

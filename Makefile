@@ -1,5 +1,5 @@
 # -----------------------------GLOBAL-----------------------------------
-name ?= emd_noise_level
+name ?= specaug_with_noise_level
 devices ?= 0
 debug ?= 0
 

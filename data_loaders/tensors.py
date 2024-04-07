@@ -1,4 +1,10 @@
+import numpy as np
 import torch
+
+def random_start_end(lenght):
+    start = np.random.uniform(0, lenght)
+    end = np.random.uniform(lenght - start, lenght)
+    return int(start*lenght), int(end*lenght)
 
 def lengths_to_mask(lengths, max_len):
     # max_len = max(lengths)
@@ -54,8 +60,19 @@ def collate(batch):
     
     if "inp" in notnone_batches[0]:
         # range from (0, noise_strength)
-        noise_max_strength = 1.0
-        noise_level = torch.rand_like(motion) * noise_max_strength 
+        background_noise_max = 0.1
+        noise_level = torch.rand_like(motion) * background_noise_max 
+        
+        batch, channel, _, time = motion.shape
+
+        if np.random.rand() > 0.25:
+            c_start, c_end = random_start_end(channel)
+            noise_level[:, c_start:c_end, :, :] = np.random.uniform(0.1, 1.)
+
+        if np.random.rand() > 0.25:
+            t_start, t_end = random_start_end(time)
+            noise_level[:, :, :, t_start:t_end] = np.random.uniform(0.1, 1.)
+
         noise_motion = ( 1 - noise_level ) * motion + noise_level * torch.randn_like(motion)
         cond['y'].update({"noise_motion": noise_motion})
         cond['y'].update({"noise_level": noise_level})
