@@ -23,6 +23,7 @@ fit:
 	$(run) \
 	-m train.train_mdm \
 	--save_dir $(save_dir) \
+	--batch_size 128 \
 	--dataset humanml \
 	--cond_noise_motion \
 	--train_platform_type TensorboardPlatform \
@@ -48,7 +49,7 @@ evaluate:
 	--model_path $(ckptpath) \
 	--edit_mode in_between \
 	--num_samples 1 \
-	--num_repetitions 2 \
+	--num_repetitions 1 \
 	--input_motion $(input_motion) \
 	$(full_mask)
 
@@ -66,5 +67,5 @@ to_mesh:
 	ls $(videodir)/sample??_rep00.mp4 | xargs -P 4 -I {} make videopath={} to_mesh_single
 
 # assign videodir
-to_mesh_render:
+to_mesh_render: to_mesh
 	blender -b visualize/blender/SMPL_FRAMES.blend -P visualize/blender/batch_render.py -- $(videodir)

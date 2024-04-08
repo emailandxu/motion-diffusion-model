@@ -22,7 +22,11 @@ class ProposeDataset():
         joints_position = (rotate_x(np.pi)[:3,:3] @ joints_position.T).T
         return joints_position.reshape(time, joint, 3)
 
-    def __init__(self, input_dirs) -> None:
+    def __init__(self, input_dirs, max_frame=196) -> None:
+        self.max_frame = max_frame
+        if type(input_dirs) is str:
+            input_dirs = [input_dirs]
+
         self.features = []
         for thedir in input_dirs:
             poses = []

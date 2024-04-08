@@ -313,12 +313,15 @@ def recover_from_ric(data, joints_num):
 For HumanML3D Dataset
 '''
 
-def tofeature(motion_data):
+def tofeature(motion_data, joints_num=22):
     """motion_data is the joint position of smpl"""
-    joints_num = 22
     source_data = motion_data[:, :joints_num]
     data, ground_positions, positions, l_velocity = process_file(source_data, 0.002)
     return data
+
+def recover(motion_data, joints_num=22):
+    """from feature to joint position"""
+    return recover_from_ric(motion_data, joints_num)
 
 
 if __name__ == "__main__":

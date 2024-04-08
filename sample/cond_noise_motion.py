@@ -100,8 +100,19 @@ def main():
             collate_args.append({'inp': motion, 'tokens': None, 'lengths': max_frames})
 
         input_motions, model_kwargs = collate(collate_args)
+        batch, channel, _, time = input_motions.shape
+
+        noise_level = torch.ones_like(input_motions) * 0.3
+
+        # root trans
+        # input_motions[:, :4, :, :] = torch.randn(batch, 4, 1, time).to(input_motions)
+        # noise_level[:, :4, :, :] = 1.
+        # input_motions[:, -4:, :, :] = torch.randn(batch, 4, 1, time).to(input_motions)
+        # noise_level[:, -4:, :, :] = 1.
+        
         model_kwargs['y']['noise_motion'] = input_motions
-        model_kwargs['y']['noise_level'] = torch.ones_like(input_motions) * 0.1
+        model_kwargs['y']['noise_level'] = noise_level
+
         print(input_motions.shape)
    
     input_motions = input_motions.to(dist_util.dev())
