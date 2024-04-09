@@ -317,12 +317,17 @@ class Text2MotionDatasetV2(data.Dataset):
         # Std[4 + (joints_num - 1) * 9 + joints_num * 3: ] = Std[4 + (joints_num - 1) * 9 + joints_num * 3: ].mean() / 1.0
 
         # foot contact
-        Std[4 + (joints_num - 1) * 9: ] = Std[4 + (joints_num - 1) * 9 + joints_num * 3: ].mean() / 1.0
+        Std[4 + (joints_num - 1) * 9: ] = Std[4 + (joints_num - 1) * 9: ].mean() / 1.0
 
         # assert 8 + (joints_num - 1) * 9 + joints_num * 3 == Std.shape[-1]
         assert 8 + (joints_num - 1) * 9 == Std.shape[-1]
-
+        
+        assert not np.isnan(Mean).any()
+        assert not np.isnan(Std).any()
+        assert not (Std == 0).any()
         self.mean, self.std = Mean, Std
+
+
         return Mean, Std
 
 
@@ -380,6 +385,7 @@ class Text2MotionDatasetV2(data.Dataset):
 
         "Z Normalization"
         motion = (motion - self.mean) / self.std
+        # assert not np.isnan(motion).any()
 
         if m_length < self.max_motion_length:
             motion = np.concatenate([motion,

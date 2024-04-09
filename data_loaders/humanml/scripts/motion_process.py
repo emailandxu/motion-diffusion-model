@@ -196,6 +196,8 @@ def process_file(positions, feet_thre):
         return cont_6d_params, r_velocity, velocity, r_rot
 
     cont_6d_params, r_velocity, velocity, r_rot = get_cont6d_params(positions)
+
+    # make it into local position
     positions = get_rifke(positions)
 
     #     trejec = np.cumsum(np.concatenate([np.array([[0, 0, 0]]), velocity], axis=0), axis=0)
@@ -235,8 +237,8 @@ def process_file(positions, feet_thre):
 
     #     print(r_velocity.shape, l_velocity.shape, root_y.shape)
     # root_data = np.concatenate([r_velocity, l_velocity, root_y[:-1]], axis=-1)
-    # without root vel, rot along axis y, position x,z, position y
-    root_data = np.concatenate([r_rot[:-1, [2]], positions[:-1, 0, [0, 2]], root_y[:-1]], axis=-1)
+    # without root vel, rot along axis y, position x,z,y, y is the height
+    root_data = np.concatenate([r_rot[:-1, [2]], global_positions[:-1, 0, [0, 2, 1]]], axis=-1)
 
     data = root_data # channel 4
     data = np.concatenate([data, ric_data[:-1]], axis=-1) # start 4, channel 63 
@@ -278,11 +280,12 @@ def orignal_recover_root_rot_pos(data):
     return r_rot_quat, r_pos
 
 def recover_root_rot_pos(data):
+    # convert the angle along y axis to quaternion
     r_rot_ang = data[..., 0]
     r_rot_quat = torch.zeros(data.shape[:-1] + (4,)).to(data.device)
     r_rot_quat[..., 0] = torch.cos(r_rot_ang)
     r_rot_quat[..., 2] = torch.sin(r_rot_ang)
-
+    # from x,z,y to x,y,z
     return r_rot_quat, data[..., 1:4][..., [0, 2, 1]]
 
 def recover_from_rot(data, joints_num, skeleton):
