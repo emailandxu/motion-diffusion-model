@@ -34,7 +34,7 @@ def get_model_args(args, data):
 
     if args.dataset == 'humanml':
         data_rep = 'hml_vec'
-        njoints = 263-66
+        njoints = 263-66+5
         nfeats = 1
     elif args.dataset == 'kit':
         data_rep = 'hml_vec'

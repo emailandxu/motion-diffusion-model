@@ -12,6 +12,8 @@ from tqdm import tqdm
 import os
 from pathlib import Path
 
+ROOT_FEAT_SIZE = 9
+
 example_path = Path(__file__).parent.joinpath("example/joints.npy")
 # Lower legs
 l_idx1, l_idx2 = 5, 8
@@ -237,8 +239,8 @@ def process_file(positions, feet_thre):
 
     #     print(r_velocity.shape, l_velocity.shape, root_y.shape)
     # root_data = np.concatenate([r_velocity, l_velocity, root_y[:-1]], axis=-1)
-    # without root vel, rot along axis y, position x,z,y, y is the height
-    root_data = np.concatenate([r_rot[:-1, [2]], global_positions[:-1, 0, [0, 2, 1]]], axis=-1)
+    # root rot 6d, position x,z,y, y is the height
+    root_data = np.concatenate([cont_6d_params[:-1, 0], global_positions[:-1, 0, [0, 2, 1]]], axis=-1)
 
     data = root_data # channel 4
     data = np.concatenate([data, ric_data[:-1]], axis=-1) # start 4, channel 63 
@@ -281,19 +283,17 @@ def orignal_recover_root_rot_pos(data):
 
 def recover_root_rot_pos(data):
     # convert the angle along y axis to quaternion
-    r_rot_ang = data[..., 0]
-    r_rot_quat = torch.zeros(data.shape[:-1] + (4,)).to(data.device)
-    r_rot_quat[..., 0] = torch.cos(r_rot_ang)
-    r_rot_quat[..., 2] = torch.sin(r_rot_ang)
+    r_rot_cond6d = data[..., :6]
+    r_rot_quat = cont6d_to_quat(r_rot_cond6d)
     # from x,z,y to x,y,z
-    return r_rot_quat, data[..., 1:4][..., [0, 2, 1]]
+    return r_rot_quat, data[..., 6:6+4][..., [0, 2, 1]]
 
 def recover_from_rot(data, joints_num, skeleton):
     r_rot_quat, r_pos = recover_root_rot_pos(data)
 
     r_rot_cont6d = quaternion_to_cont6d(r_rot_quat)
 
-    start_indx = 1 + 2 + 1 + (joints_num - 1) * 3
+    start_indx = ROOT_FEAT_SIZE + (joints_num - 1) * 3
     end_indx = start_indx + (joints_num - 1) * 6
     cont6d_params = data[..., start_indx:end_indx]
     #     print(r_rot_cont6d.shape, cont6d_params.shape, r_pos.shape)
@@ -307,7 +307,7 @@ def recover_from_rot(data, joints_num, skeleton):
 
 def recover_from_ric(data, joints_num):
     r_rot_quat, r_pos = recover_root_rot_pos(data)
-    positions = data[..., 4:(joints_num - 1) * 3 + 4]
+    positions = data[..., ROOT_FEAT_SIZE:(joints_num - 1) * 3 + ROOT_FEAT_SIZE]
     positions = positions.view(positions.shape[:-1] + (-1, 3))
 
     '''Add Y-axis rotation to local joints'''
@@ -322,6 +322,36 @@ def recover_from_ric(data, joints_num):
 
     return positions
 
+def compute_mean_std(data):
+    Mean = data.mean(axis=0)
+    Std = data.std(axis=0)
+    # root
+    Std[0:1] = Std[0:1].mean() / 1.0
+    Std[1:3] = Std[1:3].mean() / 1.0
+    Std[3:4] = Std[3:4].mean() / 1.0
+    # ric
+    Std[ROOT_FEAT_SIZE: ROOT_FEAT_SIZE+(joints_num - 1) * 3] = Std[ROOT_FEAT_SIZE: ROOT_FEAT_SIZE+(joints_num - 1) * 3].mean() / 1.0
+    # rot
+    Std[ROOT_FEAT_SIZE+(joints_num - 1) * 3: ROOT_FEAT_SIZE+(joints_num - 1) * 9] = Std[ROOT_FEAT_SIZE+(joints_num - 1) * 3: ROOT_FEAT_SIZE+(joints_num - 1) * 9].mean() / 1.0
+
+    # local vel
+    # Std[ROOT_FEAT_SIZE+(joints_num - 1) * 9: ROOT_FEAT_SIZE+(joints_num - 1) * 9 + joints_num*3] = Std[ROOT_FEAT_SIZE+(joints_num - 1) * 9: ROOT_FEAT_SIZE+(joints_num - 1) * 9 + joints_num*3].mean() / 1.0
+    # old foot contact
+    # Std[ROOT_FEAT_SIZE + (joints_num - 1) * 9 + joints_num * 3: ] = Std[ROOT_FEAT_SIZE + (joints_num - 1) * 9 + joints_num * 3: ].mean() / 1.0
+
+    # foot contact
+    Std[ROOT_FEAT_SIZE + (joints_num - 1) * 9: ] = Std[ROOT_FEAT_SIZE + (joints_num - 1) * 9: ].mean() / 1.0
+
+    Std[Std==0] = 1.
+
+    # assert 8 + (joints_num - 1) * 9 + joints_num * 3 == Std.shape[-1]
+    assert ROOT_FEAT_SIZE + (joints_num - 1) * 9 + 4 == Std.shape[-1], f"{Std.shape}"
+    
+    assert not np.isnan(Mean).any()
+    assert not np.isnan(Std).any()
+    assert not (Std == 0).any()
+    return Mean, Std
+        
 '''
 For HumanML3D Dataset
 '''

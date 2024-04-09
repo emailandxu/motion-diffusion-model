@@ -61,9 +61,9 @@ def get_opt(opt_path, device):
         opt.motion_dir = pjoin(opt.data_root, 'new_joints')
         opt.text_dir = pjoin(opt.data_root, 'texts')
         opt.joints_num = 22
-        # originally it was 263-66, but I decide to remove the lcoal_vec which is 66 
-        # opt.dim_pose = 263-66
-        opt.dim_pose = 263-66
+        # originally it was 263-66+5, but I decide to remove the lcoal_vec which is 66 
+        # opt.dim_pose = 263-66+5
+        opt.dim_pose = 263-66+5
         opt.max_motion_length = 196
     elif opt.dataset_name == 'kit':
         opt.data_root = './dataset/KIT-ML'

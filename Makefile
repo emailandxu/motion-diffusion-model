@@ -37,6 +37,8 @@ tensorboard:
 clean:
 	rm -rf $(save_dir)
 
+clean_bak:
+	rm -rf ./dataset/HumanML3D/new_joints_bake
 # ----------------------------EVALUATE-----------------------------------
 
 ckptpath ?= default

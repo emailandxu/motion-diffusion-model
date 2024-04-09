@@ -300,34 +300,8 @@ class Text2MotionDatasetV2(data.Dataset):
         data_list = [data["motion"] for key, data in self.data_dict.items()]
         data = np.concatenate(data_list, axis=0)
         print(data.shape)
-        Mean = data.mean(axis=0)
-        Std = data.std(axis=0)
-        # root
-        Std[0:1] = Std[0:1].mean() / 1.0
-        Std[1:3] = Std[1:3].mean() / 1.0
-        Std[3:4] = Std[3:4].mean() / 1.0
-        # ric
-        Std[4: 4+(joints_num - 1) * 3] = Std[4: 4+(joints_num - 1) * 3].mean() / 1.0
-        # rot
-        Std[4+(joints_num - 1) * 3: 4+(joints_num - 1) * 9] = Std[4+(joints_num - 1) * 3: 4+(joints_num - 1) * 9].mean() / 1.0
-
-        # local vel
-        # Std[4+(joints_num - 1) * 9: 4+(joints_num - 1) * 9 + joints_num*3] = Std[4+(joints_num - 1) * 9: 4+(joints_num - 1) * 9 + joints_num*3].mean() / 1.0
-        # old foot contact
-        # Std[4 + (joints_num - 1) * 9 + joints_num * 3: ] = Std[4 + (joints_num - 1) * 9 + joints_num * 3: ].mean() / 1.0
-
-        # foot contact
-        Std[4 + (joints_num - 1) * 9: ] = Std[4 + (joints_num - 1) * 9: ].mean() / 1.0
-
-        # assert 8 + (joints_num - 1) * 9 + joints_num * 3 == Std.shape[-1]
-        assert 8 + (joints_num - 1) * 9 == Std.shape[-1]
-        
-        assert not np.isnan(Mean).any()
-        assert not np.isnan(Std).any()
-        assert not (Std == 0).any()
+        Mean, Std = motion_process.compute_mean_std(data)
         self.mean, self.std = Mean, Std
-
-
         return Mean, Std
 
 
