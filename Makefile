@@ -1,5 +1,5 @@
 # -----------------------------GLOBAL-----------------------------------
-name ?= new_feature_without_allvel
+name ?= allvel_removed_with_accurate_noise_level
 devices ?= 0
 debug ?= 0
 batchsize ?= 64

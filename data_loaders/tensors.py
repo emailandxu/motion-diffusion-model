@@ -66,19 +66,18 @@ def collate(batch):
 
         # range from (0, noise_strength)
         background_noise_max = 0.5
-        specaug_noise_max = 10
-        
-        noise_level = torch.rand_like(motion) * background_noise_max 
-        noise_motion = ( 1 - noise_level ) * motion + noise_level * torch.randn_like(motion)
+        specaug_noise_level = 1.
 
+        noise_level = torch.rand_like(motion) * background_noise_max 
 
         if np.random.rand() > 0.5:
             c_start, c_end = random_start_end(channel)
-            noise_motion[:, c_start:c_end, :, :] = torch.randn_like(noise_motion[:, c_start:c_end, :, :]) * specaug_noise_max
+            noise_level[:, c_start:c_end, :, :] = specaug_noise_level
         if np.random.rand() > 0.5:
             t_start, t_end = random_start_end(time)
-            noise_motion[:, :, :, t_start:t_end] = torch.randn_like(noise_motion[:, :, :, t_start:t_end]) * specaug_noise_max
+            noise_level[:, :, :, t_start:t_end] = specaug_noise_level
 
+        noise_motion = ( 1 - noise_level ) * motion + noise_level * torch.randn_like(motion)
 
         cond['y'].update({"noise_motion": noise_motion})
         cond['y'].update({"noise_level": noise_level})

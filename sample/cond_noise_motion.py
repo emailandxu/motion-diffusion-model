@@ -20,6 +20,7 @@ import shutil
 from data_loaders.tensors import collate
 from pathlib import Path
 
+NOISE_LEVEL = 0.0
 
 def main():
     args = edit_args()
@@ -43,7 +44,7 @@ def main():
     if out_path == '':
         if args.input_motion:
             out_path = os.path.join(os.path.dirname(args.model_path),
-                                    'denoise_{}_{}'.format(niter, Path(args.input_motion).parent.stem))
+                                    'denoise_{}_{}_{}'.format(niter, Path(args.input_motion).parent.stem, NOISE_LEVEL))
         else:
             out_path = os.path.join(os.path.dirname(args.model_path),
                                     'denoise_{}_{}_seed{}'.format(niter, args.edit_mode, args.seed))
@@ -102,7 +103,7 @@ def main():
         input_motions, model_kwargs = collate(collate_args)
         batch, channel, _, time = input_motions.shape
 
-        noise_level = torch.ones_like(input_motions) * 0.3
+        noise_level = torch.ones_like(input_motions) * NOISE_LEVEL
 
         # root trans
         # input_motions[:, :4, :, :] = torch.randn(batch, 4, 1, time).to(input_motions)
