@@ -26,8 +26,6 @@ def collate_tensors(batch):
     return canvas
 
 
-subchannel = list(range(193)) + [259, 260, 261, 262]
-
 def collate(batch):
     notnone_batches = [b for b in batch if b is not None]
     databatch = [b['inp'] for b in notnone_batches]
@@ -43,20 +41,6 @@ def collate(batch):
 
     motion = databatchTensor
     bs, feat, _, t = motion.shape
-    # 1, 2, 1
-    #root_data = np.concatenate([r_velocity, l_velocity, root_y[:-1]], axis=-1)
-
-    #motion wrap
-    r_rot_quat, r_pos = motion_process.orignal_recover_root_rot_pos(motion.permute(0, 3, 2, 1).reshape(bs, t, feat))
-    r_rot = np.arcsin(r_rot_quat[..., 2:3]).permute(0, 2, 1).reshape(bs, 1, 1, t) # bs, 1, 1, time
-    r_pos = r_pos.permute(0, 2, 1).reshape(bs, 3, 1, t) # bs, 3, 1, time
-    
-    # overwrite root rot along y-axis
-    motion[:, 0:1] = r_rot
-    # overwrite root transl
-    motion[:, 1:4] = r_pos[:, [0, 2, 1]] # x, z, y
-
-    motion = motion[:, subchannel]
 
     cond = {'y': {'mask': maskbatchTensor, 'lengths': lenbatchTensor}}
 

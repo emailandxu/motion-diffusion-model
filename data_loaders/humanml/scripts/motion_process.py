@@ -218,8 +218,6 @@ def process_file(positions, feet_thre):
     # (seq_len-1, 2) linear velovity on xz plane
     r_velocity = np.arcsin(r_velocity[:, 2:3])
     l_velocity = velocity[:, [0, 2]]
-    #     print(r_velocity.shape, l_velocity.shape, root_y.shape)
-    root_data = np.concatenate([r_velocity, l_velocity, root_y[:-1]], axis=-1)
 
     '''Get Joint Rotation Representation'''
     # (seq_len, (joints_num-1) *6) quaternion for skeleton joints
@@ -235,11 +233,16 @@ def process_file(positions, feet_thre):
                         global_positions[1:] - global_positions[:-1])
     local_vel = local_vel.reshape(len(local_vel), -1)
 
+    #     print(r_velocity.shape, l_velocity.shape, root_y.shape)
+    # root_data = np.concatenate([r_velocity, l_velocity, root_y[:-1]], axis=-1)
+    # without root vel, rot along axis y, position x,z, position y
+    root_data = np.concatenate([r_rot[:-1, [2]], positions[:-1, 0, [0, 2]], root_y[:-1]], axis=-1)
+
     data = root_data # channel 4
     data = np.concatenate([data, ric_data[:-1]], axis=-1) # start 4, channel 63 
     data = np.concatenate([data, rot_data[:-1]], axis=-1) # start 67, channel 126
     #     print(data.shape, local_vel.shape)
-    data = np.concatenate([data, local_vel], axis=-1) # start 193, channel 66
+    # data = np.concatenate([data, local_vel], axis=-1) # start 193, channel 66
     data = np.concatenate([data, feet_l, feet_r], axis=-1) # start 259, channel 4
 
     return data, global_positions, positions, l_velocity

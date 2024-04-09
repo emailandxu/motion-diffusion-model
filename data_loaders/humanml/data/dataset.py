@@ -295,6 +295,37 @@ class Text2MotionDatasetV2(data.Dataset):
         self.name_list = name_list
         self.reset_max_len(self.max_length)
 
+    def update_mean_std(self):
+        joints_num = 22
+        data_list = [data["motion"] for key, data in self.data_dict.items()]
+        data = np.concatenate(data_list, axis=0)
+        print(data.shape)
+        Mean = data.mean(axis=0)
+        Std = data.std(axis=0)
+        # root
+        Std[0:1] = Std[0:1].mean() / 1.0
+        Std[1:3] = Std[1:3].mean() / 1.0
+        Std[3:4] = Std[3:4].mean() / 1.0
+        # ric
+        Std[4: 4+(joints_num - 1) * 3] = Std[4: 4+(joints_num - 1) * 3].mean() / 1.0
+        # rot
+        Std[4+(joints_num - 1) * 3: 4+(joints_num - 1) * 9] = Std[4+(joints_num - 1) * 3: 4+(joints_num - 1) * 9].mean() / 1.0
+
+        # local vel
+        # Std[4+(joints_num - 1) * 9: 4+(joints_num - 1) * 9 + joints_num*3] = Std[4+(joints_num - 1) * 9: 4+(joints_num - 1) * 9 + joints_num*3].mean() / 1.0
+        # old foot contact
+        # Std[4 + (joints_num - 1) * 9 + joints_num * 3: ] = Std[4 + (joints_num - 1) * 9 + joints_num * 3: ].mean() / 1.0
+
+        # foot contact
+        Std[4 + (joints_num - 1) * 9: ] = Std[4 + (joints_num - 1) * 9 + joints_num * 3: ].mean() / 1.0
+
+        # assert 8 + (joints_num - 1) * 9 + joints_num * 3 == Std.shape[-1]
+        assert 8 + (joints_num - 1) * 9 == Std.shape[-1]
+
+        self.mean, self.std = Mean, Std
+        return Mean, Std
+
+
     def reset_max_len(self, length):
         assert length <= self.max_motion_length
         self.pointer = np.searchsorted(self.length_arr, length)
@@ -760,18 +791,24 @@ class HumanML3D(data.Dataset):
 
         if mode == 'gt':
             # used by T2M models (including evaluators)
-            self.mean = np.load(pjoin(opt.meta_dir, f'{opt.dataset_name}_mean.npy'))
-            self.std = np.load(pjoin(opt.meta_dir, f'{opt.dataset_name}_std.npy'))
+            mean_npy = pjoin(opt.meta_dir, f'{opt.dataset_name}_mean.npy')
+            std_npy = pjoin(opt.meta_dir, f'{opt.dataset_name}_std.npy')
+            self.mean = np.load(mean_npy)
+            self.std = np.load(std_npy)
         elif mode in ['train', 'eval', 'text_only']:
             # used by our models
-            self.mean = np.load(pjoin(opt.data_root, 'Mean.npy'))
-            self.std = np.load(pjoin(opt.data_root, 'Std.npy'))
+            mean_npy = pjoin(opt.data_root, 'Mean.npy')
+            std_npy = pjoin(opt.data_root, 'Std.npy')
+            self.mean = np.load(mean_npy)
+            self.std = np.load(std_npy)
 
         if mode == 'eval':
             # used by T2M models (including evaluators)
             # this is to translate their norms to ours
-            self.mean_for_eval = np.load(pjoin(opt.meta_dir, f'{opt.dataset_name}_mean.npy'))
-            self.std_for_eval = np.load(pjoin(opt.meta_dir, f'{opt.dataset_name}_std.npy'))
+            mean_npy = pjoin(opt.meta_dir, f'{opt.dataset_name}_mean.npy')
+            std_npy = pjoin(opt.meta_dir, f'{opt.dataset_name}_std.npy')
+            self.mean_for_eval = np.load(mean_npy)
+            self.std_for_eval = np.load(std_npy)
 
         self.split_file = pjoin(opt.data_root, f'{split}.txt')
         if mode == 'text_only':
@@ -780,6 +817,12 @@ class HumanML3D(data.Dataset):
             self.w_vectorizer = WordVectorizer(pjoin(abs_base_path, 'glove'), 'our_vab')
             self.t2m_dataset = Text2MotionDatasetV2(self.opt, self.mean, self.std, self.split_file, self.w_vectorizer)
             self.num_actions = 1 # dummy placeholder
+
+        # mode == train not equal really train, see split == train
+        if split == "train" and isinstance(self.t2m_dataset, Text2MotionDatasetV2):
+            self.mean, self.std = self.t2m_dataset.update_mean_std()
+            np.save(mean_npy, self.mean)
+            np.save(std_npy, self.std)
 
         assert len(self.t2m_dataset) > 1, 'You loaded an empty dataset, ' \
                                           'it is probably because your data dir has only texts and no motions.\n' \
