@@ -286,7 +286,7 @@ def recover_root_rot_pos(data):
     r_rot_cond6d = data[..., :6]
     r_rot_quat = cont6d_to_quat(r_rot_cond6d)
     # from x,z,y to x,y,z
-    return r_rot_quat, data[..., 6:6+4][..., [0, 2, 1]]
+    return r_rot_quat, data[..., 6:6+3][..., [0, 2, 1]]
 
 def recover_from_rot(data, joints_num, skeleton):
     r_rot_quat, r_pos = recover_root_rot_pos(data)
