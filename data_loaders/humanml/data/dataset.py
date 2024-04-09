@@ -827,8 +827,8 @@ class HumanML3D(data.Dataset):
         # mode == train not equal really train, see split == train
         if split == "train" and isinstance(self.t2m_dataset, Text2MotionDatasetV2):
             self.mean, self.std = self.t2m_dataset.update_mean_std()
-            np.save(mean_npy, self.mean)
-            np.save(std_npy, self.std)
+            # np.save(mean_npy, self.mean)
+            # np.save(std_npy, self.std)
 
         assert len(self.t2m_dataset) > 1, 'You loaded an empty dataset, ' \
                                           'it is probably because your data dir has only texts and no motions.\n' \
