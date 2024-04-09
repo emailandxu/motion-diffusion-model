@@ -26,6 +26,8 @@ def collate_tensors(batch):
     return canvas
 
 
+subchannel = list(range(193)) + [259, 260, 261, 262]
+
 def collate(batch):
     notnone_batches = [b for b in batch if b is not None]
     databatch = [b['inp'] for b in notnone_batches]
@@ -53,6 +55,8 @@ def collate(batch):
     motion[:, 0:1] = r_rot
     # overwrite root transl
     motion[:, 1:4] = r_pos[:, [0, 2, 1]] # x, z, y
+
+    motion = motion[:, subchannel]
 
     cond = {'y': {'mask': maskbatchTensor, 'lengths': lenbatchTensor}}
 

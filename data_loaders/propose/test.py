@@ -19,12 +19,12 @@ daiqin, mifei = dataset
 #%%
 
 motion = daiqin
-# time, 263
+# time, 263-66
 time, channel = motion.shape
 
 max_frames = (time // 196) * 196
 motion = motion[:max_frames]
-motion = motion.reshape(-1, 196, 263)
+motion = motion.reshape(-1, 196, 263-66)
 outlier = motion[4]
 
 plt.imshow((outlier[1:]-outlier[:-1])[..., np.newaxis])

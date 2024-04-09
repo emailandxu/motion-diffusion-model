@@ -1,5 +1,5 @@
 # -----------------------------GLOBAL-----------------------------------
-name ?= new_feature_without_rootvel
+name ?= new_feature_without_allvel
 devices ?= 0
 debug ?= 0
 batchsize ?= 64
