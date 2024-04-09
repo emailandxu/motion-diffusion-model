@@ -236,7 +236,7 @@ class Text2MotionDatasetV2(data.Dataset):
                 # else:
                 motion = np.load(pjoin(opt.motion_dir, name + '.npy'))
                 motion = motion_process.tofeature(motion)
-                np.save(bake_path, motion)
+                # np.save(bake_path, motion)
 
                 if (len(motion)) < min_motion_len or (len(motion) >= 200):
                     continue
