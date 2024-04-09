@@ -11,6 +11,7 @@ import spacy
 from torch.utils.data._utils.collate import default_collate
 from data_loaders.humanml.utils.word_vectorizer import WordVectorizer
 from data_loaders.humanml.utils.get_opt import get_opt
+from data_loaders.humanml.scripts import motion_process
 
 # import spacy
 
@@ -222,9 +223,21 @@ class Text2MotionDatasetV2(data.Dataset):
 
         new_name_list = []
         length_list = []
+
+        bake_dir =opt.motion_dir + "_bake"
+        if not os.path.exists(bake_dir):
+            os.mkdir(bake_dir)
+
         for name in tqdm(id_list):
             try:
-                motion = np.load(pjoin(opt.motion_dir, name + '.npy'))
+                bake_path = pjoin(bake_dir, name+".npy")
+                if os.path.exists(bake_path):
+                    motion = np.load(bake_path)
+                else:
+                    motion = np.load(pjoin(opt.motion_dir, name + '.npy'))
+                    motion = motion_process.tofeature(motion)
+                    np.save(bake_path, motion)
+
                 if (len(motion)) < min_motion_len or (len(motion) >= 200):
                     continue
                 text_data = []
@@ -254,8 +267,8 @@ class Text2MotionDatasetV2(data.Dataset):
                                 while new_name in data_dict:
                                     new_name = random.choice('ABCDEFGHIJKLMNOPQRSTUVW') + '_' + name
                                 data_dict[new_name] = {'motion': n_motion,
-                                                       'length': len(n_motion),
-                                                       'text':[text_dict]}
+                                                        'length': len(n_motion),
+                                                        'text':[text_dict]}
                                 new_name_list.append(new_name)
                                 length_list.append(len(n_motion))
                             except:
@@ -265,11 +278,12 @@ class Text2MotionDatasetV2(data.Dataset):
 
                 if flag:
                     data_dict[name] = {'motion': motion,
-                                       'length': len(motion),
-                                       'text': text_data}
+                                        'length': len(motion),
+                                        'text': text_data}
                     new_name_list.append(name)
                     length_list.append(len(motion))
-            except:
+            except Exception as e:
+                print(name, e)
                 pass
 
         name_list, length_list = zip(*sorted(zip(new_name_list, length_list), key=lambda x: x[1]))

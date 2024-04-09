@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+from data_loaders.humanml.scripts import motion_process
 
 def random_start_end(lenght):
     start = np.random.uniform(0, lenght)
@@ -39,6 +40,20 @@ def collate(batch):
     maskbatchTensor = lengths_to_mask(lenbatchTensor, databatchTensor.shape[-1]).unsqueeze(1).unsqueeze(1) # unqueeze for broadcasting
 
     motion = databatchTensor
+    bs, feat, _, t = motion.shape
+    # 1, 2, 1
+    #root_data = np.concatenate([r_velocity, l_velocity, root_y[:-1]], axis=-1)
+
+    #motion wrap
+    r_rot_quat, r_pos = motion_process.orignal_recover_root_rot_pos(motion.permute(0, 3, 2, 1).reshape(bs, t, feat))
+    r_rot = np.arcsin(r_rot_quat[..., 2:3]).permute(0, 2, 1).reshape(bs, 1, 1, t) # bs, 1, 1, time
+    r_pos = r_pos.permute(0, 2, 1).reshape(bs, 3, 1, t) # bs, 3, 1, time
+    
+    # overwrite root rot along y-axis
+    motion[:, 0:1] = r_rot
+    # overwrite root transl
+    motion[:, 1:4] = r_pos[:, [0, 2, 1]] # x, z, y
+
     cond = {'y': {'mask': maskbatchTensor, 'lengths': lenbatchTensor}}
 
     if 'text' in notnone_batches[0]:

@@ -1,7 +1,9 @@
 # -----------------------------GLOBAL-----------------------------------
-name ?= specaug_with_noise_level
+name ?= new_feature_without_rootvel
 devices ?= 0
 debug ?= 0
+batchsize ?= 64
+otherparam ?=
 
 ifeq ($(debug), 0)
 	python=python
@@ -23,11 +25,11 @@ fit:
 	$(run) \
 	-m train.train_mdm \
 	--save_dir $(save_dir) \
-	--batch_size 128 \
+	--batch_size $(batchsize) \
 	--dataset humanml \
 	--cond_noise_motion \
 	--train_platform_type TensorboardPlatform \
-	--save_interval 10000
+	--save_interval 10000 $(other_param)
 
 tensorboard:
 	tensorboard --logdir save/tensorboard --port 7777
