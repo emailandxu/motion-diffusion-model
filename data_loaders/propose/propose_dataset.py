@@ -20,6 +20,21 @@ class ProposeDataset():
         joints_position = (rotate_x(np.pi)[:3,:3] @ joints_position.T).T
         return joints_position.reshape(time, joint, 3)
 
+    @staticmethod
+    def downsample_array(arr, original_fps, target_fps):
+        """
+        Downsamples a numpy array from original_fps to target_fps.
+
+        :param arr: Numpy array with shape (time, channel)
+        :param original_fps: Original frames per second (e.g., 30)
+        :param target_fps: Target frames per second (e.g., 20)
+        :return: Downsampled numpy array
+        """
+        frame_ratio = original_fps / target_fps
+        total_frames = arr.shape[0]
+        selected_frames = np.arange(0, total_frames, frame_ratio).astype(int)
+        return arr[selected_frames]
+
 
     def __init__(self, input_dirs, max_frame=196) -> None:
         self.max_frame = max_frame
@@ -45,6 +60,7 @@ class ProposeDataset():
             )
 
             joints_position = ProposeDataset.align(joints_position)
+            joints_position = ProposeDataset.downsample_array(joints_position, original_fps=30, target_fps=20)
             feature = motion_process.tofeature(joints_position)
             self.features.append(feature)
     
