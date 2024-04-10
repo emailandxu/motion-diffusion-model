@@ -1,5 +1,5 @@
 # -----------------------------GLOBAL-----------------------------------
-name ?= allvel_removed_with_accurate_noise_level
+name ?= specaug_white_and_black
 devices ?= 0
 debug ?= 0
 batchsize ?= 64
