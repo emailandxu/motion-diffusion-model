@@ -1,5 +1,5 @@
 # -----------------------------GLOBAL-----------------------------------
-name ?= specaug_white_and_black
+name ?= specaug_root_and_zero_background
 devices ?= 0
 debug ?= 0
 batchsize ?= 64
