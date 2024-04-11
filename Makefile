@@ -34,6 +34,9 @@ fit:
 tensorboard:
 	tensorboard --logdir save/tensorboard --port 7777
 
+save_now:
+	touch /tmp/you_should_save_now
+
 clean:
 	rm -rf $(save_dir)
 
