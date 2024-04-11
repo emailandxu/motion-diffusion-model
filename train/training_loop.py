@@ -146,7 +146,7 @@ class TrainLoop:
                         else:
                             self.train_platform.report_scalar(name=k, value=v, iteration=self.step, group_name='Loss')
 
-                if self.step % self.save_interval == 0:
+                if self.step!=0 and self.step % self.save_interval == 0:
                     self.save()
                     self.model.eval()
                     self.evaluate()
@@ -158,6 +158,13 @@ class TrainLoop:
                 self.step += 1
             if not (not self.lr_anneal_steps or self.step + self.resume_step < self.lr_anneal_steps):
                 break
+
+            # every epoch checkit
+            if os.path.exists("/tmp/you_should_save_now"):
+                os.remove("/tmp/you_should_save_now")
+                self.save()
+                self.evaluate()
+
         # Save the last checkpoint if it wasn't already saved.
         if (self.step - 1) % self.save_interval != 0:
             self.save()
