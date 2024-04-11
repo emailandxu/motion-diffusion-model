@@ -55,7 +55,7 @@ evaluate:
 	-m sample.cond_noise_motion \
 	--model_path $(ckptpath) \
 	--edit_mode in_between \
-	--num_samples 1 \
+	--num_samples 10 \
 	--num_repetitions 1 \
 	--input_motion $(input_motion) \
 	$(full_mask)
