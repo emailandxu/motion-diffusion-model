@@ -201,8 +201,14 @@ class GaussianDiffusion:
     def masked_l2(self, a, b, mask):
         # assuming a.shape == b.shape == bs, J, Jdim, seqlen
         # assuming mask.shape == bs, 1, 1, seqlen
-        loss = self.l2_loss(a, b)
-        loss = sum_flat(loss * mask.float())  # gives \sigma_euclidean over unmasked elements
+        loss_mat = self.l2_loss(a, b)
+        
+        root_loss_weights = (1 / torch.clamp(torch.sigmoid(-loss_mat[:, :motion_process.ROOT_FEAT_SIZE]), min=1e-4, max=0.5))
+        loss_weights = torch.ones_like(loss_mat, requires_grad=False)
+        loss_weights[:, :motion_process.ROOT_FEAT_SIZE] =  root_loss_weights
+        loss_mat = loss_mat * loss_weights
+
+        loss = sum_flat(loss_mat * mask.float())  # gives \sigma_euclidean over unmasked elements
         n_entries = a.shape[1] * a.shape[2]
         non_zero_elements = sum_flat(mask) * n_entries
         # print('mask', mask.shape)

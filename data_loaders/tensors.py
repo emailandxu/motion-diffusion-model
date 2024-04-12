@@ -3,7 +3,7 @@ import torch
 from data_loaders.humanml.scripts import motion_process
 
 def rand_like_from(arr, low, high):
-    low, high = high, low if low < high else low, high
+    low, high = (high, low) if low < high else (low, high)
     return (high - low) * torch.rand_like(arr) + low
 
 

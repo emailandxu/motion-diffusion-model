@@ -1,5 +1,5 @@
 # -----------------------------GLOBAL-----------------------------------
-name ?= special_noise_for_root
+name ?= root_loss_weights
 devices ?= 0
 debug ?= 0
 batchsize ?= 64
