@@ -20,7 +20,13 @@ import shutil
 from data_loaders.tensors import collate
 from pathlib import Path
 
-NOISE_LEVEL = 0.0
+NOISE_LEVEL_MIN = 0.0
+NOISE_LEVEL_MAX = 0.0
+
+def rand_like_from(arr, low, high):
+    low, high = high, low if low < high else low, high
+    return (high - low) * torch.rand_like(arr) + low
+
 
 def main():
     args = edit_args()
@@ -44,7 +50,7 @@ def main():
     if out_path == '':
         if args.input_motion:
             out_path = os.path.join(os.path.dirname(args.model_path),
-                                    'denoise_{}_{}_{}'.format(niter, Path(args.input_motion).parent.stem, NOISE_LEVEL))
+                                    'denoise_{}_{}_{}'.format(niter, Path(args.input_motion).parent.stem, f"{NOISE_LEVEL_MIN}_{NOISE_LEVEL_MAX}"))
         else:
             out_path = os.path.join(os.path.dirname(args.model_path),
                                     'denoise_{}_{}_seed{}'.format(niter, args.edit_mode, args.seed))
@@ -101,9 +107,13 @@ def main():
             collate_args.append({'inp': motion, 'tokens': None, 'lengths': max_frames})
 
         input_motions, model_kwargs = collate(collate_args)
-        batch, channel, _, time = input_motions.shape
+        noise_level = rand_like_from(input_motions, NOISE_LEVEL_MIN, NOISE_LEVEL_MAX)
+        noise_level[:, :9] = rand_like_from(noise_level[:, :9], 1.0, 1.0)
 
-        noise_level = torch.ones_like(input_motions) * NOISE_LEVEL
+
+        # batch, channel, _, time = input_motions.shape
+        input_motions
+
 
         # root trans
         # input_motions[:, :4, :, :] = torch.randn(batch, 4, 1, time).to(input_motions)
@@ -111,7 +121,7 @@ def main():
         # input_motions[:, -4:, :, :] = torch.randn(batch, 4, 1, time).to(input_motions)
         # noise_level[:, -4:, :, :] = 1.
         
-        model_kwargs['y']['noise_motion'] = input_motions
+        model_kwargs['y']['noise_motion'] = ( 1- noise_level) * input_motions + noise_level * torch.randn_like(input_motions)
         model_kwargs['y']['noise_level'] = noise_level
 
         print(input_motions.shape)

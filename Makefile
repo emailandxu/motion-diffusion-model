@@ -1,5 +1,5 @@
 # -----------------------------GLOBAL-----------------------------------
-name ?= specaug_root_and_zero_background
+name ?= special_noise_for_root
 devices ?= 0
 debug ?= 0
 batchsize ?= 64

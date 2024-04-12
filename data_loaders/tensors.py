@@ -2,6 +2,11 @@ import numpy as np
 import torch
 from data_loaders.humanml.scripts import motion_process
 
+def rand_like_from(arr, low, high):
+    low, high = high, low if low < high else low, high
+    return (high - low) * torch.rand_like(arr) + low
+
+
 def random_start_end(lenght):
     start = np.random.uniform(0, lenght)
     end = np.random.uniform(lenght - start, lenght)
@@ -64,29 +69,24 @@ def collate(batch):
     if "inp" in notnone_batches[0]:
         batch, channel, _, time = motion.shape
 
-        # range from (0, noise_strength)
-        background_noise_max = 1.
-        specaug_noise_level = 1.
-
         # background noise
         if np.random.rand() > 0.5:
             noise_level = torch.zeros_like(motion)
         else:
-            noise_level = torch.rand_like(motion) * background_noise_max 
+            noise_level = rand_like_from(motion, 0., 1.)
 
-        # root noise
-        if np.random.rand() > 0.5:
-            root_noise_max = 0.2
-            c_start, c_end = 0, 9
-            noise_level[:, c_start:c_end, :, :] = torch.rand_like(noise_level[:, c_start:c_end, :, :]) * root_noise_max
+        # root noise, random noise start, end
+        noise_level[:, 0:9, :, :] = rand_like_from(noise_level[:, 0:9, :, :], np.random.rand(), np.random.rand())
+        t0, t1 = random_start_end(time)
+        noise_level[:, 0:9, t0:t1] = 1.
 
         # specaug
         if np.random.rand() > 0.5:
             c_start, c_end = random_start_end(channel)
-            noise_level[:, c_start:c_end, :, :] = specaug_noise_level
+            noise_level[:, c_start:c_end, :, :] = 1.
         if np.random.rand() > 0.5:
             t_start, t_end = random_start_end(time)
-            noise_level[:, :, :, t_start:t_end] = specaug_noise_level
+            noise_level[:, :, :, t_start:t_end] = 1.
 
         noise_motion = ( 1 - noise_level ) * motion + noise_level * torch.randn_like(motion)
 
