@@ -20,8 +20,8 @@ import shutil
 from data_loaders.tensors import collate
 from pathlib import Path
 
-NOISE_LEVEL_MIN = 0.0
-NOISE_LEVEL_MAX = 0.0
+NOISE_LEVEL_MIN = 1.0
+NOISE_LEVEL_MAX = 1.0
 
 def rand_like_from(arr, low, high):
     low, high = (high, low) if low < high else (low, high)
@@ -35,8 +35,10 @@ def main():
     max_frames = 196 if args.dataset in ['kit', 'humanml'] else 60
 
     if args.input_motion:
-        from data_loaders.propose.propose_dataset import ProposeDataset
-        full_motion = ProposeDataset([args.input_motion])[0] # time, channel=253
+        # from data_loaders.propose.propose_dataset import ProposeDataset
+        # full_motion = ProposeDataset([args.input_motion])[0] # time, channel=253
+        from data_loaders.easymocap.easymocap_dataset import EasyMocapDataset
+        full_motion = EasyMocapDataset([args.input_motion])[0]
         print(full_motion.shape)
         chunks = (len(full_motion) // max_frames) + 1
         args.num_samples = chunks
@@ -108,7 +110,7 @@ def main():
 
         input_motions, model_kwargs = collate(collate_args)
         noise_level = rand_like_from(input_motions, NOISE_LEVEL_MIN, NOISE_LEVEL_MAX)
-        noise_level[:, :9] = rand_like_from(noise_level[:, :9], 1.0, 1.0)
+        # noise_level[:, :9] = rand_like_from(noise_level[:, :9], 1.0, 1.0)
 
 
         # batch, channel, _, time = input_motions.shape
@@ -121,8 +123,13 @@ def main():
         # input_motions[:, -4:, :, :] = torch.randn(batch, 4, 1, time).to(input_motions)
         # noise_level[:, -4:, :, :] = 1.
         
-        model_kwargs['y']['noise_motion'] = ( 1- noise_level) * input_motions + noise_level * torch.randn_like(input_motions)
-        model_kwargs['y']['noise_level'] = noise_level
+        # model_kwargs['y']['noise_motion'] = ( 1- noise_level) * input_motions + noise_level * torch.randn_like(input_motions)
+        model_kwargs['y']['noise_level'] = torch.zeros_like(noise_level)
+        model_kwargs['y']['noise_level'][:, humanml_utils.HML_UPPER_BODY_MASK]  = noise_level[:, humanml_utils.HML_UPPER_BODY_MASK] 
+
+        model_kwargs['y']['noise_motion'][:, humanml_utils.HML_UPPER_BODY_MASK] = \
+                ( 1- noise_level[:, humanml_utils.HML_UPPER_BODY_MASK] ) * input_motions[:, humanml_utils.HML_UPPER_BODY_MASK] + \
+                noise_level[:, humanml_utils.HML_UPPER_BODY_MASK]  * torch.randn_like(input_motions)[:, humanml_utils.HML_UPPER_BODY_MASK] 
 
         print(input_motions.shape)
    
@@ -153,9 +160,18 @@ def main():
         model_kwargs['y']['inpainting_mask'] = model_kwargs['y']['inpainting_mask'].unsqueeze(0).unsqueeze(
             -1).unsqueeze(-1).repeat(input_motions.shape[0], 1, input_motions.shape[2], input_motions.shape[3])
 
+    elif args.edit_mode == 'lower_body':
+        model_kwargs['y']['inpainting_mask'] = torch.tensor(humanml_utils.HML_UPPER_BODY_MASK, dtype=torch.bool,
+                                                            device=input_motions.device)  # True is lower body data
+        model_kwargs['y']['inpainting_mask'] = model_kwargs['y']['inpainting_mask'].unsqueeze(0).unsqueeze(
+            -1).unsqueeze(-1).repeat(input_motions.shape[0], 1, input_motions.shape[2], input_motions.shape[3])
+
     all_motions = []
     all_lengths = []
     all_text = []
+
+    samples = []
+    model_inputs = []
 
     for rep_i in range(args.num_repetitions):
         print(f'### Start sampling [repetitions #{rep_i}]')
@@ -182,7 +198,13 @@ def main():
         # Recover XYZ *positions* from HumanML3D vector representation
         if model.data_rep == 'hml_vec':
             n_joints = 22 if sample.shape[1] == 263-66+5 else 21
+
             sample = data.dataset.t2m_dataset.inv_transform(sample.cpu().permute(0, 2, 3, 1)).float()
+            model_input = data.dataset.t2m_dataset.inv_transform(input_motions.cpu().permute(0, 2, 3, 1)).float()
+            
+            samples.append(sample)
+            model_inputs.append(model_input)
+
             sample = recover_from_ric(sample, n_joints)
             sample = sample.view(-1, *sample.shape[2:]).permute(0, 2, 3, 1)
 
@@ -192,7 +214,7 @@ def main():
 
         print(f"created {len(all_motions) * args.batch_size} samples")
 
-
+    samples = np.concatenate(samples, axis=0)
     all_motions = np.concatenate(all_motions, axis=0)
     all_motions = all_motions[:total_num_samples]  # [bs, njoints, 6, seqlen]
     all_text = all_text[:total_num_samples]
@@ -206,7 +228,8 @@ def main():
     print(f"saving results file to [{npy_path}]")
     np.save(npy_path,
             {'motion': all_motions, 'text': all_text, 'lengths': all_lengths,
-             'num_samples': args.num_samples, 'num_repetitions': args.num_repetitions})
+             'num_samples': args.num_samples, 'num_repetitions': args.num_repetitions,
+             'samples':samples, "model_inputs":model_inputs})
     with open(npy_path.replace('.npy', '.txt'), 'w') as fw:
         fw.write('\n'.join(all_text))
     with open(npy_path.replace('.npy', '_len.txt'), 'w') as fw:

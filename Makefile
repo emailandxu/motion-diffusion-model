@@ -76,3 +76,6 @@ to_mesh:
 # assign videodir
 to_mesh_render: to_mesh
 	blender -b visualize/blender/SMPL_FRAMES.blend -P visualize/blender/batch_render.py -- $(videodir)
+
+trajviz:
+	python visualize/trajviz.py $(npypath)

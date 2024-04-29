@@ -45,10 +45,21 @@ HML_ROOT_MASK = np.concatenate(([True]*(1+2+1),
                                 HML_ROOT_BINARY[1:].repeat(6),
                                 HML_ROOT_BINARY.repeat(3),
                                 [False] * 4))
+
 HML_LOWER_BODY_JOINTS_BINARY = np.array([i in HML_LOWER_BODY_JOINTS for i in range(NUM_HML_JOINTS)])
-HML_LOWER_BODY_MASK = np.concatenate(([True]*(1+2+1),
+
+HML_LOWER_BODY_MASK = np.concatenate((
+                                    # [True]*(1+2+1),
+                                    [True] * 9,
                                      HML_LOWER_BODY_JOINTS_BINARY[1:].repeat(3),
                                      HML_LOWER_BODY_JOINTS_BINARY[1:].repeat(6),
-                                     HML_LOWER_BODY_JOINTS_BINARY.repeat(3),
+                                    #  HML_LOWER_BODY_JOINTS_BINARY.repeat(3),
                                      [True]*4))
-HML_UPPER_BODY_MASK = ~HML_LOWER_BODY_MASK
+
+HML_UPPER_BODY_MASK = np.concatenate((
+                                    # [True]*(1+2+1),
+                                    [False] * 9,
+                                    HML_LOWER_BODY_JOINTS_BINARY[1:].repeat(3),
+                                    HML_LOWER_BODY_JOINTS_BINARY[1:].repeat(6),
+                                    #  HML_LOWER_BODY_JOINTS_BINARY.repeat(3),
+                                    np.array([False]*4)))
