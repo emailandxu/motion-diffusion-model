@@ -59,7 +59,7 @@ class EasyMocapDataset():
             )
 
             joints_position = EasyMocapDataset.align(joints_position)
-            joints_position = EasyMocapDataset.downsample_array(joints_position, original_fps=30, target_fps=20)
+            # joints_position = EasyMocapDataset.downsample_array(joints_position, original_fps=30, target_fps=20)
             feature = motion_process.tofeature(joints_position)
             self.features.append(feature)
     

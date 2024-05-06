@@ -3,6 +3,7 @@
 Generate a large batch of image samples from a model and save them as a large
 numpy array. This can be used to produce samples for FID evaluation.
 """
+import sys
 from utils.fixseed import fixseed
 import os
 import numpy as np
@@ -19,9 +20,14 @@ from data_loaders.humanml.utils.plot_script import plot_3d_motion
 import shutil
 from data_loaders.tensors import collate
 from pathlib import Path
+from model.rotation2xyz import Rotation2TheMotion
+from visualize.simplify_loc2rot import joints2smpl
 
-NOISE_LEVEL_MIN = 1.0
-NOISE_LEVEL_MAX = 1.0
+NOISE_LEVEL_MIN = 0.0
+NOISE_LEVEL_MAX = 0.0
+
+to_the_motion = Rotation2TheMotion("cuda")
+j2s = joints2smpl(num_frames=196, device_id=0, cuda=True)
 
 def rand_like_from(arr, low, high):
     low, high = (high, low) if low < high else (low, high)
@@ -109,6 +115,7 @@ def main():
             collate_args.append({'inp': motion, 'tokens': None, 'lengths': max_frames})
 
         input_motions, model_kwargs = collate(collate_args)
+
         noise_level = rand_like_from(input_motions, NOISE_LEVEL_MIN, NOISE_LEVEL_MAX)
         # noise_level[:, :9] = rand_like_from(noise_level[:, :9], 1.0, 1.0)
 
@@ -124,12 +131,17 @@ def main():
         # noise_level[:, -4:, :, :] = 1.
         
         # model_kwargs['y']['noise_motion'] = ( 1- noise_level) * input_motions + noise_level * torch.randn_like(input_motions)
-        model_kwargs['y']['noise_level'] = torch.zeros_like(noise_level)
-        model_kwargs['y']['noise_level'][:, humanml_utils.HML_UPPER_BODY_MASK]  = noise_level[:, humanml_utils.HML_UPPER_BODY_MASK] 
+        # model_kwargs['y']['noise_level'] = torch.zeros_like(noise_level)
+        # model_kwargs['y']['noise_level'][:, humanml_utils.HML_UPPER_BODY_MASK]  = noise_level[:, humanml_utils.HML_UPPER_BODY_MASK] 
 
-        model_kwargs['y']['noise_motion'][:, humanml_utils.HML_UPPER_BODY_MASK] = \
-                ( 1- noise_level[:, humanml_utils.HML_UPPER_BODY_MASK] ) * input_motions[:, humanml_utils.HML_UPPER_BODY_MASK] + \
-                noise_level[:, humanml_utils.HML_UPPER_BODY_MASK]  * torch.randn_like(input_motions)[:, humanml_utils.HML_UPPER_BODY_MASK] 
+        # model_kwargs['y']['noise_motion'][:, humanml_utils.HML_UPPER_BODY_MASK] = \
+        #         ( 1- noise_level[:, humanml_utils.HML_UPPER_BODY_MASK] ) * input_motions[:, humanml_utils.HML_UPPER_BODY_MASK] + \
+        #         noise_level[:, humanml_utils.HML_UPPER_BODY_MASK]  * torch.randn_like(input_motions)[:, humanml_utils.HML_UPPER_BODY_MASK] 
+        
+        # model_kwargs['y']['noise_motion'] = ( 1- noise_level) * input_motions + noise_level * torch.randn_like(input_motions)
+        
+        model_kwargs['y']['noise_motion'] = input_motions
+        model_kwargs['y']['noise_level'] = noise_level
 
         print(input_motions.shape)
    
@@ -230,6 +242,22 @@ def main():
             {'motion': all_motions, 'text': all_text, 'lengths': all_lengths,
              'num_samples': args.num_samples, 'num_repetitions': args.num_repetitions,
              'samples':samples, "model_inputs":model_inputs})
+
+    if args.to_the_motion:
+        the_motion = all_motions
+        print(the_motion.shape)
+        the_motion, _ = j2s.joint2smpl(the_motion[0].transpose(2, 0, 1))
+        print(the_motion.shape)
+        the_motion = the_motion.detach().cpu().numpy()
+        the_motion = to_the_motion(torch.tensor(the_motion), mask=None,
+                                        pose_rep='rot6d', translation=True, glob=True,
+                                        jointstype='vertices',
+                                        # jointstype='smpl',  # for joint locations
+                                        vertstrans=True)
+        np.save(args.input_motion + "/../" + "the_motion", the_motion)
+        print("save the motion at", args.input_motion + "/../" + "the_motion")
+        sys.exit(0)
+    
     with open(npy_path.replace('.npy', '.txt'), 'w') as fw:
         fw.write('\n'.join(all_text))
     with open(npy_path.replace('.npy', '_len.txt'), 'w') as fw:

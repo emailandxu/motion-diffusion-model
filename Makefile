@@ -58,6 +58,7 @@ evaluate:
 	--num_samples 10 \
 	--num_repetitions 1 \
 	--input_motion $(input_motion) \
+	--to_the_motion \
 	$(full_mask)
 
 # ----------------------------VISUALIZE---------------------------------
